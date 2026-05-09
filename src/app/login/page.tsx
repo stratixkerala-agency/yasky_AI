@@ -27,11 +27,21 @@ export default function LoginPage() {
       document.cookie = 'firebase-session=user; path=/; max-age=3600; SameSite=strict';
       router.push('/dashboard');
     } catch (err: unknown) {
-      if (err instanceof Error) {
-        if (err.message.includes('auth/invalid-credential') || err.message.includes('auth/invalid-email')) {
+      console.error('Login error:', err);
+      if (err && typeof err === 'object' && 'code' in err) {
+        const error = err as { code: string };
+        if (error.code === 'auth/invalid-credential' || error.code === 'auth/invalid-email' || error.code === 'auth/wrong-password') {
           setError('Invalid email or password');
-        } else if (err.message.includes('auth/user-disabled')) {
+        } else if (error.code === 'auth/user-disabled') {
           setError('Your account has been disabled');
+        } else if (error.code === 'auth/network-request-failed') {
+          setError('Network error. Please check your connection.');
+        } else {
+          setError('Login failed. Please try again.');
+        }
+      } else if (err instanceof Error) {
+        if (err.message.includes('Firebase not initialized')) {
+          setError('Authentication service unavailable. Contact support.');
         } else {
           setError('Login failed. Please try again.');
         }

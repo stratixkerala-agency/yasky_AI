@@ -1,8 +1,8 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { 
   LayoutDashboard, 
   Target, 
@@ -29,12 +29,13 @@ const navItems: { id: string; label: string; icon: LucideIcon | (() => React.JSX
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const router = useRouter();
   const { user, logout } = useAuth();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const handleLogout = async () => {
+    setIsLoggingOut(true);
     await logout();
-    router.push('/login');
+    window.location.href = '/login';
   };
 
   return (
@@ -96,10 +97,15 @@ export default function Sidebar() {
         </div>
         <button
           onClick={handleLogout}
-          className="flex items-center gap-3 px-3 py-2.5 w-full rounded-xl text-sm font-medium text-zinc-400 hover:text-red-400 hover:bg-red-500/10 transition-all duration-200"
+          disabled={isLoggingOut}
+          className="flex items-center gap-3 px-3 py-2.5 w-full rounded-xl text-sm font-medium text-zinc-400 hover:text-red-400 hover:bg-red-500/10 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          <LogOut className="w-5 h-5" />
-          <span>Sign Out</span>
+          {isLoggingOut ? (
+            <div className="w-5 h-5 border-2 border-zinc-600 border-t-zinc-400 rounded-full animate-spin" />
+          ) : (
+            <LogOut className="w-5 h-5" />
+          )}
+          <span>{isLoggingOut ? 'Signing out...' : 'Sign Out'}</span>
         </button>
       </div>
     </aside>
