@@ -158,8 +158,8 @@ export default function ChatPage() {
                         target="_blank"
                         rel="noopener noreferrer"
                         style={{ textDecoration: "none" }}
-                        onMouseEnter={e => { e.currentTarget.firstElementChild.style.background = "rgba(255,255,255,0.2)"; e.currentTarget.firstElementChild.style.boxShadow = "0 6px 28px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.3)"; e.currentTarget.firstElementChild.style.transform = "translateY(-2px)"; }}
-                        onMouseLeave={e => { e.currentTarget.firstElementChild.style.background = "rgba(255,255,255,0.12)"; e.currentTarget.firstElementChild.style.boxShadow = "0 4px 20px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.25)"; e.currentTarget.firstElementChild.style.transform = "translateY(0)"; }}
+                        onMouseEnter={e => { const child = e.currentTarget.firstElementChild as HTMLDivElement | null; if (child) { child.style.background = "rgba(255,255,255,0.2)"; child.style.boxShadow = "0 6px 28px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.3)"; child.style.transform = "translateY(-2px)"; } }}
+                        onMouseLeave={e => { const child = e.currentTarget.firstElementChild as HTMLDivElement | null; if (child) { child.style.background = "rgba(255,255,255,0.12)"; child.style.boxShadow = "0 4px 20px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.25)"; child.style.transform = "translateY(0)"; } }}
                     >
                         <div style={{
                             position: "fixed", bottom: "24px", right: "24px", zIndex: 999,
