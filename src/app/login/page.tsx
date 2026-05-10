@@ -4,8 +4,6 @@ import { useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { Sparkles, Lock, Mail, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import Button from '@/components/ui/Button';
-import Input from '@/components/ui/Input';
 import Spinner from '@/components/ui/Spinner';
 
 export default function LoginPage() {

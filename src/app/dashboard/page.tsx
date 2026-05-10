@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { 
@@ -11,7 +11,8 @@ import {
   TrendingUp, 
   ArrowRight,
   Zap,
-  Users
+  Users,
+  Menu
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { AI_ROLES } from '@/lib/prompts';
@@ -22,6 +23,7 @@ import Spinner from '@/components/ui/Spinner';
 export default function DashboardPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -70,41 +72,50 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-zinc-950">
-      <Sidebar />
-      <div className="pl-64">
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      
+      <div className="lg:pl-64">
         <div className="relative overflow-hidden">
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-purple-900/20 via-zinc-950 to-zinc-950" />
           <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-purple-500/10 rounded-full blur-3xl" />
           <div className="absolute bottom-0 right-1/4 w-[400px] h-[400px] bg-purple-500/10 rounded-full blur-3xl" />
         </div>
 
-        <div className="relative max-w-7xl mx-auto px-6 py-12">
-          <div className="mb-12">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="flex items-center gap-2 px-3 py-1 bg-purple-500/20 rounded-full border border-purple-500/30">
-                <Zap className="w-4 h-4 text-purple-400" />
-                <span className="text-sm font-medium text-purple-300">Internal AI Platform</span>
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-12">
+          <div className="flex items-center justify-between mb-8 sm:mb-12">
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="flex items-center gap-2 px-3 py-1 bg-purple-500/20 rounded-full border border-purple-500/30">
+                  <Zap className="w-4 h-4 text-purple-400" />
+                  <span className="text-sm font-medium text-purple-300">Internal AI Platform</span>
+                </div>
               </div>
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white tracking-tight mb-3">
+                Welcome to <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-purple-600">Yasky AI</span>
+              </h1>
+              <p className="text-base sm:text-lg lg:text-xl text-zinc-400 max-w-2xl">
+                Your AI-powered assistant platform for digital marketing excellence.
+              </p>
             </div>
-            <h1 className="text-4xl font-bold text-white tracking-tight mb-3">
-              Welcome to <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-purple-600">Yasky AI</span>
-            </h1>
-            <p className="text-xl text-zinc-400 max-w-2xl">
-              Your AI-powered assistant platform for digital marketing excellence. Select an AI agent to get started.
-            </p>
+            <button 
+              onClick={() => setSidebarOpen(true)}
+              className="lg:hidden p-3 bg-zinc-800/50 hover:bg-zinc-700/50 rounded-xl"
+            >
+              <Menu className="w-5 h-5 text-zinc-400" />
+            </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8 sm:mb-12">
             {roleCards.map(({ role, features, icon: Icon, gradient }) => (
               <Link key={role.id} href={`/chat/${role.id}`}>
-                <Card hover glow className="p-6 h-full group">
-                  <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center mb-4 shadow-lg`}>
-                    <Icon className="w-6 h-6 text-white" />
+                <Card hover glow className="p-5 sm:p-6 h-full group">
+                  <div className={`w-10 sm:w-12 h-10 sm:h-12 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center mb-3 sm:mb-4 shadow-lg`}>
+                    <Icon className="w-5 sm:w-6 h-5 sm:h-6 text-white" />
                   </div>
-                  <h3 className="text-lg font-semibold text-white mb-2 group-hover:text-purple-400 transition-colors">
+                  <h3 className="text-base sm:text-lg font-semibold text-white mb-2 group-hover:text-purple-400 transition-colors">
                     {role.name}
                   </h3>
-                  <p className="text-sm text-zinc-400 mb-4 line-clamp-2">
+                  <p className="text-xs sm:text-sm text-zinc-400 mb-3 sm:mb-4 line-clamp-2">
                     {role.description}
                   </p>
                   <div className="space-y-1.5">
@@ -123,8 +134,8 @@ export default function DashboardPage() {
             ))}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Card className="p-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
+            <Card className="p-5 sm:p-6">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 bg-green-500/20 rounded-xl flex items-center justify-center">
                   <Users className="w-5 h-5 text-green-400" />
@@ -139,7 +150,7 @@ export default function DashboardPage() {
               </p>
             </Card>
 
-            <Card className="p-6">
+            <Card className="p-5 sm:p-6">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 bg-purple-500/20 rounded-xl flex items-center justify-center">
                   <Sparkles className="w-5 h-5 text-purple-400" />
@@ -154,7 +165,7 @@ export default function DashboardPage() {
               </p>
             </Card>
 
-            <Card className="p-6">
+            <Card className="p-5 sm:p-6">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 bg-blue-500/20 rounded-xl flex items-center justify-center">
                   <Zap className="w-5 h-5 text-blue-400" />
