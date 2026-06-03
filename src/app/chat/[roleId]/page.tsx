@@ -39,7 +39,6 @@ export default function ChatPage() {
   const [isTyping, setIsTyping] = useState(false);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [currentConvId, setCurrentConvId] = useState<string | null>(null);
-  const [historyLoading, setHistoryLoading] = useState(true);
   const [convMenuOpen, setConvMenuOpen] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -67,26 +66,26 @@ export default function ChatPage() {
   useEffect(() => {
     if (!user || !role) return;
     (async () => {
-      setHistoryLoading(true);
       try {
-        const convs = await getConversations(user.uid);
+        const convs = await getConversations(user.uid).catch(() => []);
         const roleConvs = convs.filter(c => c.roleId === roleId);
         setConversations(roleConvs);
         if (roleConvs.length > 0) {
           const latest = roleConvs[0];
           setCurrentConvId(latest.id);
-          const msgs = await getMessages(user.uid, latest.id);
+          const msgs = await getMessages(user.uid, latest.id).catch(() => []);
           setMessages(msgs);
         } else {
           const newId = createMessageId();
           setCurrentConvId(newId);
-          await createConversation(user.uid, newId, roleId);
+          createConversation(user.uid, newId, roleId).catch(() => {});
           setConversations([{ id: newId, roleId, title: 'New conversation', createdAt: Date.now(), updatedAt: Date.now(), messageCount: 0 }]);
         }
       } catch (err) {
         console.error('Failed to load chat history:', err);
-      } finally {
-        setHistoryLoading(false);
+        const newId = createMessageId();
+        setCurrentConvId(newId);
+        setConversations([{ id: newId, roleId, title: 'New conversation', createdAt: Date.now(), updatedAt: Date.now(), messageCount: 0 }]);
       }
     })();
   }, [user, role, roleId]);
@@ -95,21 +94,18 @@ export default function ChatPage() {
     if (!user) return;
     setCurrentConvId(convId);
     setConvMenuOpen(false);
-    setHistoryLoading(true);
     try {
-      const msgs = await getMessages(user.uid, convId);
+      const msgs = await getMessages(user.uid, convId).catch(() => []);
       setMessages(msgs);
     } catch (err) {
       console.error('Failed to load messages:', err);
-    } finally {
-      setHistoryLoading(false);
     }
   }, [user]);
 
   const deleteOldConversations = useCallback(async () => {
     if (!user) return;
     try {
-      const convs = await getConversations(user.uid);
+      const convs = await getConversations(user.uid).catch(() => []);
       setConversations(convs.filter(c => c.roleId === roleId));
     } catch (err) {
       console.error('Failed to refresh conversations:', err);
@@ -147,14 +143,14 @@ export default function ChatPage() {
       setMessages(prev => [...prev, assistantMessage]);
 
       const convId = currentConvId!;
-      await saveMessage(user.uid, convId, userMessage);
-      await saveMessage(user.uid, convId, assistantMessage);
-      await incrementMessageCount(user.uid, convId);
+      saveMessage(user.uid, convId, userMessage).catch(() => {});
+      saveMessage(user.uid, convId, assistantMessage).catch(() => {});
+      incrementMessageCount(user.uid, convId).catch(() => {});
 
       const conv = conversations.find(c => c.id === convId);
       if (conv && conv.title === 'New conversation') {
         const title = inputText.length > 50 ? inputText.slice(0, 50) + '...' : inputText;
-        await updateConversationTitle(user.uid, convId, title);
+        updateConversationTitle(user.uid, convId, title).catch(() => {});
         setConversations(prev => prev.map(c => c.id === convId ? { ...c, title } : c));
       }
     } catch {
@@ -182,7 +178,7 @@ export default function ChatPage() {
     inputRef.current?.focus();
   };
 
-  if (authLoading || historyLoading) {
+  if (authLoading) {
     return (
       <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
         <Spinner size="lg" />
