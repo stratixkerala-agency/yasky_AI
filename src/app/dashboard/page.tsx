@@ -12,24 +12,36 @@ import {
   ArrowRight,
   Zap,
   Users,
-  Menu
+  Menu,
+  MessageSquare,
+  Clock
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { AI_ROLES } from '@/lib/prompts';
 import Card from '@/components/ui/Card';
 import Sidebar from '@/components/layout/Sidebar';
 import Spinner from '@/components/ui/Spinner';
+import { getConversations } from '@/lib/chatHistory';
+import type { Conversation } from '@/lib/chatHistory';
 
 export default function DashboardPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [recentConvs, setRecentConvs] = useState<Conversation[]>([]);
 
   useEffect(() => {
     if (!loading && !user) {
       router.push('/login');
     }
   }, [user, loading, router]);
+
+  useEffect(() => {
+    if (!user) return;
+    getConversations(user.uid)
+      .then(convs => setRecentConvs(convs.slice(0, 6)))
+      .catch(console.error);
+  }, [user]);
 
   if (loading) {
     return (
@@ -133,6 +145,41 @@ export default function DashboardPage() {
               </Link>
             ))}
           </div>
+
+          {recentConvs.length > 0 && (
+            <div className="mb-8 sm:mb-12">
+              <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <MessageSquare className="w-5 h-5 text-purple-400" />
+                Recent Conversations
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {recentConvs.map(conv => {
+                  const role = AI_ROLES.find(r => r.id === conv.roleId);
+                  return (
+                    <Link key={conv.id} href={`/chat/${conv.roleId}`}>
+                      <Card hover className="p-4 group">
+                        <div className="flex items-center gap-3 mb-2">
+                          {role && (
+                            <span className="text-lg">{role.icon}</span>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-white truncate">{conv.title}</p>
+                            <p className="text-xs text-zinc-500">{role?.name || conv.roleId}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-zinc-600">
+                          <Clock className="w-3 h-3" />
+                          <span>{new Date(conv.updatedAt).toLocaleDateString()}</span>
+                          <span>·</span>
+                          <span>{conv.messageCount} messages</span>
+                        </div>
+                      </Card>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
             <Card className="p-5 sm:p-6">

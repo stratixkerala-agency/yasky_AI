@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef, FormEvent } from 'react';
+import { useEffect, useState, useRef, FormEvent, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { 
@@ -11,7 +11,9 @@ import {
   Bot,
   Loader2,
   Zap,
-  Menu
+  Menu,
+  ChevronDown,
+  Clock
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { getRoleById, AI_ROLES } from '@/lib/prompts';
@@ -20,6 +22,8 @@ import { formatTimestamp, cn } from '@/lib/utils';
 import Spinner from '@/components/ui/Spinner';
 import ReactMarkdown from 'react-markdown';
 import Sidebar from '@/components/layout/Sidebar';
+import { getConversations, createConversation, getMessages, saveMessage, updateConversationTitle, incrementMessageCount } from '@/lib/chatHistory';
+import type { Conversation } from '@/lib/chatHistory';
 
 export default function ChatPage() {
   const { user, loading: authLoading } = useAuth();
@@ -33,6 +37,10 @@ export default function ChatPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [isTyping, setIsTyping] = useState(false);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [currentConvId, setCurrentConvId] = useState<string | null>(null);
+  const [historyLoading, setHistoryLoading] = useState(true);
+  const [convMenuOpen, setConvMenuOpen] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -49,9 +57,68 @@ export default function ChatPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
 
+  useEffect(() => {
+    if (!convMenuOpen) return;
+    const handler = () => setConvMenuOpen(false);
+    document.addEventListener('click', handler);
+    return () => document.removeEventListener('click', handler);
+  }, [convMenuOpen]);
+
+  useEffect(() => {
+    if (!user || !role) return;
+    (async () => {
+      setHistoryLoading(true);
+      try {
+        const convs = await getConversations(user.uid);
+        const roleConvs = convs.filter(c => c.roleId === roleId);
+        setConversations(roleConvs);
+        if (roleConvs.length > 0) {
+          const latest = roleConvs[0];
+          setCurrentConvId(latest.id);
+          const msgs = await getMessages(user.uid, latest.id);
+          setMessages(msgs);
+        } else {
+          const newId = createMessageId();
+          setCurrentConvId(newId);
+          await createConversation(user.uid, newId, roleId);
+          setConversations([{ id: newId, roleId, title: 'New conversation', createdAt: Date.now(), updatedAt: Date.now(), messageCount: 0 }]);
+        }
+      } catch (err) {
+        console.error('Failed to load chat history:', err);
+      } finally {
+        setHistoryLoading(false);
+      }
+    })();
+  }, [user, role, roleId]);
+
+  const switchConversation = useCallback(async (convId: string) => {
+    if (!user) return;
+    setCurrentConvId(convId);
+    setConvMenuOpen(false);
+    setHistoryLoading(true);
+    try {
+      const msgs = await getMessages(user.uid, convId);
+      setMessages(msgs);
+    } catch (err) {
+      console.error('Failed to load messages:', err);
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, [user]);
+
+  const deleteOldConversations = useCallback(async () => {
+    if (!user) return;
+    try {
+      const convs = await getConversations(user.uid);
+      setConversations(convs.filter(c => c.roleId === roleId));
+    } catch (err) {
+      console.error('Failed to refresh conversations:', err);
+    }
+  }, [user, roleId]);
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || isLoading || !role) return;
+    if (!input.trim() || isLoading || !role || !user) return;
 
     const userMessage: ChatMessage = {
       id: createMessageId(),
@@ -61,6 +128,7 @@ export default function ChatPage() {
     };
 
     setMessages(prev => [...prev, userMessage]);
+    const inputText = input.trim();
     setInput('');
     setIsLoading(true);
     setIsTyping(true);
@@ -77,6 +145,18 @@ export default function ChatPage() {
       };
 
       setMessages(prev => [...prev, assistantMessage]);
+
+      const convId = currentConvId!;
+      await saveMessage(user.uid, convId, userMessage);
+      await saveMessage(user.uid, convId, assistantMessage);
+      await incrementMessageCount(user.uid, convId);
+
+      const conv = conversations.find(c => c.id === convId);
+      if (conv && conv.title === 'New conversation') {
+        const title = inputText.length > 50 ? inputText.slice(0, 50) + '...' : inputText;
+        await updateConversationTitle(user.uid, convId, title);
+        setConversations(prev => prev.map(c => c.id === convId ? { ...c, title } : c));
+      }
     } catch {
       const errorMessage: ChatMessage = {
         id: createMessageId(),
@@ -102,7 +182,7 @@ export default function ChatPage() {
     inputRef.current?.focus();
   };
 
-  if (authLoading) {
+  if (authLoading || historyLoading) {
     return (
       <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
         <Spinner size="lg" />
@@ -150,13 +230,63 @@ export default function ChatPage() {
                 >
                   <ArrowLeft className="w-5 h-5 text-zinc-400" />
                 </Link>
-                <div className="flex items-center gap-3">
+                <button
+                  onClick={async () => {
+                    if (!user) return;
+                    const newId = createMessageId();
+                    setCurrentConvId(newId);
+                    setMessages([]);
+                    setConvMenuOpen(false);
+                    await createConversation(user.uid, newId, roleId);
+                    setConversations(prev => [{ id: newId, roleId, title: 'New conversation', createdAt: Date.now(), updatedAt: Date.now(), messageCount: 0 }, ...prev]);
+                  }}
+                  className="flex items-center justify-center w-10 h-10 bg-zinc-800/50 hover:bg-zinc-700/50 rounded-xl transition-colors"
+                  title="New conversation"
+                >
+                  <span className="text-lg text-zinc-400">+</span>
+                </button>
+                  <div className="flex items-center gap-3">
                   <div className={cn('w-9 sm:w-10 h-9 sm:h-10 rounded-xl bg-gradient-to-br flex items-center justify-center', gradientClass)}>
                     {renderIcon(role.icon)}
                   </div>
-                  <div>
-                    <h1 className="text-base sm:text-lg font-semibold text-white">{role.name}</h1>
+                  <div className="relative">
+                    <div className="flex items-center gap-2">
+                      <h1 className="text-base sm:text-lg font-semibold text-white">{role.name}</h1>
+                      {conversations.length > 0 && (
+                        <button
+                          onClick={() => setConvMenuOpen(!convMenuOpen)}
+                          className="p-1 hover:bg-zinc-800 rounded-lg transition-colors"
+                        >
+                          <ChevronDown className="w-4 h-4 text-zinc-400" />
+                        </button>
+                      )}
+                    </div>
                     <p className="text-xs text-zinc-500 hidden sm:block">AI Assistant</p>
+
+                    {convMenuOpen && (
+                      <div className="absolute top-full left-0 mt-2 w-72 max-h-60 overflow-y-auto bg-zinc-900 border border-zinc-700 rounded-xl shadow-2xl shadow-black/50 z-20">
+                        <div className="p-2 space-y-1">
+                          {conversations.map(conv => (
+                            <button
+                              key={conv.id}
+                              onClick={() => switchConversation(conv.id)}
+                              className={cn(
+                                'w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center gap-2',
+                                conv.id === currentConvId
+                                  ? 'bg-purple-500/20 text-purple-300'
+                                  : 'text-zinc-400 hover:bg-zinc-800 hover:text-white'
+                              )}
+                            >
+                              <Clock className="w-3.5 h-3.5 flex-shrink-0" />
+                              <span className="truncate">{conv.title}</span>
+                              <span className="text-xs text-zinc-600 flex-shrink-0 ml-auto">
+                                {new Date(conv.updatedAt).toLocaleDateString()}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
