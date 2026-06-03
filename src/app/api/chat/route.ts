@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
         'Authorization': `Bearer ${openRouterApiKey}`,
       },
       body: JSON.stringify({
-        model: 'nvidia/nemotron-3-super-120b-a12b:free',
+        model: 'meta-llama/llama-3.2-3b-instruct:free',
         messages,
         max_tokens: 2000,
       }),
