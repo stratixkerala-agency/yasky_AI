@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
         'Authorization': `Bearer ${openRouterApiKey}`,
       },
       body: JSON.stringify({
-        model: 'baidu/cobuddy:free',
+        model: 'nvidia/nemotron-3-super-120b-a12b:free',
         messages,
         max_tokens: 2000,
       }),
