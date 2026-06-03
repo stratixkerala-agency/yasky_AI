@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
         'Authorization': `Bearer ${openRouterApiKey}`,
       },
       body: JSON.stringify({
-        model: 'openrouter/free',
+        model: 'openrouter/owl-alpha',
         messages,
         max_tokens: 2000,
       }),
